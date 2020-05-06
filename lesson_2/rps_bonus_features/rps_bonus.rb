@@ -17,8 +17,44 @@ def clear_screen
   system("clear") || system("cls")
 end
 
+# prints a horizontal line for text seperation
+def hr(number, char='-')
+  puts char * number
+end
+
+# adds vertical clearance
+def spacer(lines=1)
+  lines.times { puts }
+end
+
 def prompt(message)
   puts "=> #{message}"
+end
+
+def display_welcome_message
+  clear_screen
+  banner_message = "  WELCOME TO 'Rock-Paper-Scissors-SPOCK-LIZARD' GAME  "
+  hr(banner_message.length, '=')
+  puts banner_message
+  puts "      Game is over when either player reaches 5"
+  hr(banner_message.length, '=')
+end
+
+def display_score(scores)
+  spacer
+  puts "   PLAYER| #{scores[:player]}   -   #{scores[:computer]} |COMPUTER"
+  spacer
+end
+
+def display_selection_menu
+  choice_prompt = <<-MSG
+    * Rock (r)
+    * Paper (p)
+    * Scissors (sc)
+    * Spock (sp)
+    * Lizard (l)
+  MSG
+  puts choice_prompt
 end
 
 def valid_choice?(choice)
@@ -27,29 +63,25 @@ end
 
 def convert_to_long_choice(choice)
   index = ABBREVIATED_CHOICES.index(choice)
-  if index
-    VALID_CHOICES[index]
-  else
-    choice
-  end
+  index ? VALID_CHOICES[index] : choice
 end
 
-def retrieve_choice
+def retrieve_player_choice
   loop do
-    choice_prompt = <<-MSG
-Choose one, you can type abbreviations:
-    * Rock (r)
-    * Paper (p)
-    * Scissors (sc)
-    * Spock (sp)
-    * Lizard (l)
-MSG
-    prompt(choice_prompt)
+    prompt("Choose one, you also can type abbreviations:")
     choice = gets.chomp.strip.downcase
 
     break convert_to_long_choice(choice) if valid_choice?(choice)
     prompt("That's not a valid choice.")
   end
+end
+
+def retrieve_computer_choice
+  VALID_CHOICES.sample
+end
+
+def display_choices(player, computer)
+  prompt("You chose: #{player.upcase}; Computer chose: #{computer.upcase}")
 end
 
 def determine_winner(first, second)
@@ -62,38 +94,46 @@ def determine_winner(first, second)
   end
 end
 
-def display_winner(player, computer)
-  prompt("You chose: #{player.upcase}; Computer chose: #{computer.upcase}")
-end
-
-def display_winning_message(winner, player, computer)
-  return if winner == 'tie'
-
+def determine_phrase(winner, player, computer)
   if winner == 'player'
-    winner_choice = player
-    loser_choice = computer
+    WINNING_MESSAGES[player][computer]
+  elsif winner == 'computer'
+    WINNING_MESSAGES[computer][player]
   else
-    winner_choice = computer
-    loser_choice = player
-  end
-
-  prompt(WINNING_MESSAGES[winner_choice][loser_choice])
-end
-
-def display_round_result(who='tie')
-  case who
-  when 'player' then prompt('You won this round!')
-  when 'computer' then prompt('Computer won this round!')
-  else prompt('It is a tie!')
+    ''
   end
 end
 
-def display_game_result(player)
-  if player == 5
-    puts "You won the game"
+def display_round_result(winner, phrase)
+  if winner == 'tie'
+    prompt('It is a tie!')
+  else
+    prompt("#{phrase}. ###### #{winner.upcase} won!")
+  end
+end
+
+def update_score(scores, winner)
+  scores[winner.to_sym] += 1
+end
+
+def game_won?(scores)
+  scores[:player] == 5 || scores[:computer] == 5
+end
+
+def display_game_result(scores)
+  spacer
+  if scores[:player] == 5
+    puts "Player won the game"
   else
     puts "Computer won the game"
   end
+  spacer
+end
+
+def prompt_for_next_round
+  spacer
+  prompt("Hit 'Enter' to play the next round...")
+  gets
 end
 
 def retrieve_new_game_answer
@@ -105,38 +145,36 @@ def retrieve_new_game_answer
   end
 end
 
-clear_screen
-first_game = true
-
 loop do # main game loop
-  clear_screen unless first_game
+  scores = { player: 0, computer: 0 }
 
-  player_score = 0
-  computer_score = 0
+  loop do
+    display_welcome_message
+    display_score(scores)
+    display_selection_menu
 
-  while player_score < 5 && computer_score < 5
-    choice = retrieve_choice
-    computer_choice = VALID_CHOICES.sample
+    player_choice = retrieve_player_choice
+    computer_choice = retrieve_computer_choice
+    display_choices(player_choice, computer_choice)
 
-    winner = determine_winner(choice, computer_choice)
+    winner = determine_winner(player_choice, computer_choice)
+    phrase = determine_phrase(winner, player_choice, computer_choice)
+    display_round_result(winner, phrase)
 
-    display_winner(choice, computer_choice)
-    display_winning_message(winner, choice, computer_choice)
-    display_round_result(winner)
+    update_score(scores, winner) unless winner == 'tie'
 
-    player_score += 1 if winner == 'player'
-    computer_score += 1 if winner == 'computer'
+    if game_won?(scores)
+      prompt("GAME OVER...")
+      display_score(scores)
+      display_game_result(scores)
+      break
+    end
 
-    prompt("Player: #{player_score} - Computer: #{computer_score}")
-    puts ""
+    prompt_for_next_round
   end
 
-  display_game_result(player_score)
-
-  answer = retrieve_new_game_answer
-  break unless %w(y yes).include?(answer)
-
-  first_game = false
+  new_game = retrieve_new_game_answer
+  break unless %w(y yes).include?(new_game)
 end # end main loop
 
 prompt('Thank you for playing. Good bye!')
