@@ -6,7 +6,7 @@ WINNING_LINES = [[1, 2, 3], [4, 5, 6], [7, 8, 9]] + # rows
                 [[2, 5, 8], [1, 4, 7], [3, 6, 9]] + # columns
                 [[1, 5, 9], [3, 5, 7]]              # diagonals
 WINNING_SCORE = 5
-MOVE_FIRST = "choose"
+MOVE_FIRST = "choose" # valid options: choose, computer, player
 
 # method definitions
 def prompt(msg)
@@ -35,6 +35,10 @@ def box(msg)
   puts lower_left + (horizontal * len) + lower_right
 end
 
+def integer?(input)
+  /^\d+$/.match(input)
+end
+
 def display_welcome_message
   box "  WELCOME TO TIC-TAC-TOE GAME  "
   spacer
@@ -42,7 +46,7 @@ end
 
 def display_score(scores)
   spacer
-  prompt "SCORE (reach 5 to win):"
+  prompt "SCORE (reach #{WINNING_SCORE} to win):"
   box "  PLAYER| #{scores[:player]}   -   #{scores[:computer]} |COMPUTER  "
   spacer
 end
@@ -53,10 +57,6 @@ end
 
 # rubocop: disable Metrics/AbcSize
 def display_board(brd)
-  clear_screen
-  display_welcome_message
-  display_marker_info
-  spacer
   puts "       |     |"
   puts "    #{brd[1]}  |  #{brd[2]}  |  #{brd[3]}"
   puts "       |     |"
@@ -70,6 +70,13 @@ def display_board(brd)
   puts "       |     |"
 end
 # rubocop: enable Metrics/AbcSize
+
+def reset_screen
+  clear_screen
+  display_welcome_message
+  display_marker_info
+  spacer
+end
 
 def initialize_board
   new_board = {}
@@ -100,12 +107,12 @@ def player_places_piece!(brd)
   square = ''
   loop do
     prompt "Choose a square #{joinor(empty_squares(brd))}:"
-    square = gets.chomp.to_i
-    break if empty_squares(brd).include?(square)
+    square = gets.chomp
+    break if integer?(square) && empty_squares(brd).include?(square.to_i)
     prompt "Sorry, that's not a valid choice."
   end
 
-  brd[square] = PLAYER_MARKER
+  brd[square.to_i] = PLAYER_MARKER
 end
 
 def count_marker(brd, line, marker)
@@ -179,6 +186,10 @@ def game_won?(scores)
   !!detect_game_winner(scores)
 end
 
+def update_score(scores, winner)
+  scores[winner.to_sym] += 1
+end
+
 def detect_game_winner(scores)
   if scores[:player] == WINNING_SCORE
     return 'player'
@@ -186,6 +197,14 @@ def detect_game_winner(scores)
     return 'computer'
   end
   nil
+end
+
+def display_round_result(winner)
+  if winner == "tie"
+    prompt "It's a tie!"
+  else
+    prompt "#{winner.capitalize} won the round!"
+  end
 end
 
 def display_next_round
@@ -225,15 +244,20 @@ def choose_first
   end
 end
 
-if MOVE_FIRST == "choose"
-  first_player = choose_first == 'p' ? "player" : "computer"
-  spacer(2)
-  prompt "#{first_player.upcase} will start playing."
-  prompt "Press enter to begin the game..."
-  gets
-else
-  first_player = MOVE_FIRST
+def initialize_player
+  if MOVE_FIRST == "choose"
+    result = choose_first == 'p' ? "player" : "computer"
+    spacer(2)
+    prompt "#{result.upcase} will start playing."
+    prompt "Press enter to begin the game..."
+    gets
+  else
+    result = MOVE_FIRST
+  end
+  result
 end
+
+first_player = initialize_player
 
 loop do # main game loop
   scores = { player: 0, computer: 0 }
@@ -242,6 +266,7 @@ loop do # main game loop
     board = initialize_board
     current_player = first_player
     loop do
+      reset_screen
       display_board(board)
       display_score(scores)
 
@@ -253,15 +278,15 @@ loop do # main game loop
 
     if round_won?(board)
       winner = detect_round_winner(board)
-      scores[winner.to_sym] += 1
-      round_result = "#{winner.capitalize} won the round!"
+      update_score(scores, winner)
     else
-      round_result = "It's a tie!"
+      winner = "tie"
     end
 
+    reset_screen
     display_board(board)
     display_score(scores)
-    prompt round_result
+    display_round_result(winner)
 
     break if game_won?(scores)
     display_next_round
