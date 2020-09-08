@@ -19,3 +19,6 @@ numbers.each do |number|
 end
 
 # prints: 1 2
+
+# iterators operate on the original array, not on a copy.
+# This results in unexpected values. Do not mutate a collection while iterating over it.
